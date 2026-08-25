@@ -126,6 +126,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 label: Text(order.status, style: const TextStyle(fontSize: 10)),
                                 backgroundColor: Colors.green.shade100,
                               ),
+                              onTap: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: Text('Order Details #${order.orderId}'),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('Status: ${order.status}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                        Text('Total Amount: \$${order.totalAmount.toStringAsFixed(2)}'),
+                                        Text('Payment Method: ${order.paymentMethod.toUpperCase()}'),
+                                        Text('Date: ${order.createdAt.toIso8601String().split('T').first}'),
+                                        const SizedBox(height: 8),
+                                        const Text('Shipping Address:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                        Text(order.shippingAddressJson),
+                                        const SizedBox(height: 8),
+                                        const Text('Items:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                        Text(order.itemsJson),
+                                      ],
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text('Close'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
                             ),
                           );
                         },

@@ -294,6 +294,51 @@ class CatalogScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            const DrawerHeader(
+              decoration: BoxDecoration(color: Colors.deepPurple),
+              child: Text(
+                'Blog Store Filters',
+                style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.clear_all),
+              title: const Text('Reset All Filters'),
+              onPressed: () {
+                searchQuerySignal.value = '';
+                Navigator.pop(context);
+              },
+            ),
+            const Divider(),
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text('Filter by Brand / Category:', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            BlocSignalBuilder<List<ProductEntity>>(
+              signal: productsSignal,
+              builder: (context, products) {
+                final brands = products.map((p) => p.brand).whereType<String>().toSet().toList();
+                return Column(
+                  children: brands.map((brand) {
+                    return ListTile(
+                      leading: const Icon(Icons.branding_watermark, size: 20),
+                      title: Text(brand),
+                      onPressed: () {
+                        searchQuerySignal.value = brand;
+                        Navigator.pop(context);
+                      },
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
       appBar: AppBar(
         title: const Text('Blog Store'),
         actions: [
