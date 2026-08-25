@@ -15,6 +15,8 @@ import 'features/cart_wishlist/presentation/wishlist_screen.dart';
 import 'features/cart_wishlist/data/app_database.dart';
 import 'features/cart_wishlist/data/cart_reverification_service.dart';
 import 'features/cart_wishlist/data/product_cache_manager.dart';
+import 'features/cart_wishlist/data/data_backup_utility.dart';
+import 'features/cart_wishlist/data/offline_order_sync_manager.dart';
 import 'features/checkout/data/checkout_client.dart';
 import 'features/checkout/domain/promo_code_engine.dart';
 import 'shared/i18n/schema_i18n_resolver.dart';
@@ -39,6 +41,8 @@ class _BlogStoreAppState extends State<BlogStoreApp> {
   late final SchemaResolver _schemaResolver;
   late final AppDatabase _database;
   late final ProductCacheManager _cacheManager;
+  late final DataBackupUtility _backupUtility;
+  late final OfflineOrderSyncManager _offlineSyncManager;
   late final CartReverificationService _reverificationService;
   late final CheckoutClient _checkoutClient;
 
@@ -67,13 +71,15 @@ class _BlogStoreAppState extends State<BlogStoreApp> {
       },
     );
     _database = AppDatabase();
+    _checkoutClient = CheckoutClient(dio: _dio);
     _cacheManager = ProductCacheManager(database: _database);
+    _backupUtility = DataBackupUtility(database: _database);
+    _offlineSyncManager = OfflineOrderSyncManager(database: _database, checkoutClient: _checkoutClient);
     _reverificationService = CartReverificationService(
       bloggerDataService: _bloggerDataService,
       schemaResolver: _schemaResolver,
       database: _database,
     );
-    _checkoutClient = CheckoutClient(dio: _dio);
 
     _loadCartAndWishlist();
     _loadProducts();
@@ -188,6 +194,8 @@ class _BlogStoreAppState extends State<BlogStoreApp> {
                     cartItemsSignal: _cartItemsSignal,
                     reverificationService: _reverificationService,
                     checkoutClient: _checkoutClient,
+                    backupUtility: _backupUtility,
+                    offlineSyncManager: _offlineSyncManager,
                     database: _database,
                     onCartUpdated: _loadCartAndWishlist,
                   ),
@@ -683,6 +691,8 @@ class CartScreen extends StatefulWidget {
   final Signal<List<CartItem>> cartItemsSignal;
   final CartReverificationService reverificationService;
   final CheckoutClient checkoutClient;
+  final DataBackupUtility backupUtility;
+  final OfflineOrderSyncManager offlineSyncManager;
   final AppDatabase database;
   final VoidCallback onCartUpdated;
 
@@ -691,6 +701,8 @@ class CartScreen extends StatefulWidget {
     required this.cartItemsSignal,
     required this.reverificationService,
     required this.checkoutClient,
+    required this.backupUtility,
+    required this.offlineSyncManager,
     required this.database,
     required this.onCartUpdated,
   });
@@ -713,6 +725,40 @@ class _CartScreenState extends State<CartScreen> {
       appBar: AppBar(
         title: const Text('Your Cart'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.sync),
+            tooltip: 'Sync Queued Orders',
+            onPressed: () async {
+              final count = await widget.offlineSyncManager.syncQueuedOrders();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Synced $count offline queued orders!')),
+                );
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.download_for_offline),
+            tooltip: 'Backup Cart & Wishlist',
+            onPressed: () async {
+              final jsonBackup = await widget.backupUtility.exportBackupJson();
+              if (context.mounted) {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Exported Backup JSON'),
+                    content: SelectableText(jsonBackup),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Close'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.delete_sweep),
             tooltip: 'Clear Cart',
@@ -911,10 +957,11 @@ class _CartScreenState extends State<CartScreen> {
     }
 
     // 2. Submit order to api.antinna.in Hono worker
+    final finalTotal = (total - _appliedDiscount).clamp(0.0, double.infinity);
     final payload = CheckoutPayload(
       userId: 'user_123',
       items: items.map((i) => OrderItem(id: i.postId, title: i.title, price: i.price, quantity: i.quantity)).toList(),
-      totalAmount: total,
+      totalAmount: finalTotal,
       paymentMethod: _selectedPayment,
       shippingAddress: {'city': _cityController.text, 'country': _countryController.text},
     );
