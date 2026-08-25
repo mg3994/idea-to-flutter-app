@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../domain/product_entity.dart';
 import '../../../shared/i18n/schema_i18n_resolver.dart';
 import '../../../shared/i18n/currency_converter.dart';
+import '../domain/schema_share_utility.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final ProductEntity product;
@@ -32,6 +33,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       appBar: AppBar(
         title: Text(product.title),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            tooltip: 'Share Product',
+            onPressed: () {
+              final shareText = SchemaShareUtility.generateShareText(product);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Copied link: $shareText'),
+                  duration: const Duration(seconds: 4),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.favorite_border),
             onPressed: () => widget.onToggleWishlist(product),
