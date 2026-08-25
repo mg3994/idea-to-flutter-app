@@ -78,6 +78,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       avatar: const Icon(Icons.branding_watermark, size: 16),
                       label: Text('Brand: ${product.brand}'),
                     ),
+                  if (product.ratingValue != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, color: Colors.amber, size: 20),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${product.ratingValue!.toStringAsFixed(1)} / 5.0',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        if (product.reviewCount != null) ...[
+                          const SizedBox(width: 6),
+                          Text('(${product.reviewCount} reviews)', style: const TextStyle(color: Colors.grey)),
+                        ],
+                      ],
+                    ),
+                  ],
                   if (product.sku != null)
                     Text('SKU: ${product.sku}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
                   Text('Published: $formattedDate', style: const TextStyle(color: Colors.grey, fontSize: 12)),
@@ -85,6 +102,29 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   const Text('Description', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   const SizedBox(height: 4),
                   Text(product.description ?? 'No description available.'),
+                  if (product.reviews.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    const Text('Customer Reviews', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 8),
+                    ...product.reviews.map((rev) {
+                      final author = rev['author'] is Map ? rev['author']['name'] : rev['author']?.toString() ?? 'Anonymous';
+                      final body = rev['reviewBody']?.toString() ?? rev['description']?.toString() ?? '';
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: Padding(
+                          padding: const EdgeInsets.all(10.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(author, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              const SizedBox(height: 2),
+                              Text(body, style: const TextStyle(fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
                   const SizedBox(height: 20),
                   const Divider(),
                   Row(

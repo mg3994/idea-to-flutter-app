@@ -16,6 +16,7 @@ import 'features/cart_wishlist/data/app_database.dart';
 import 'features/cart_wishlist/data/cart_reverification_service.dart';
 import 'features/cart_wishlist/data/product_cache_manager.dart';
 import 'features/checkout/data/checkout_client.dart';
+import 'features/checkout/domain/promo_code_engine.dart';
 import 'shared/i18n/schema_i18n_resolver.dart';
 import 'package:dio/dio.dart';
 
@@ -637,6 +638,9 @@ class _CartScreenState extends State<CartScreen> {
   PaymentMethod _selectedPayment = PaymentMethod.upi;
   final _cityController = TextEditingController(text: 'New York');
   final _countryController = TextEditingController(text: 'USA');
+  final _promoController = TextEditingController();
+  double _appliedDiscount = 0.0;
+  String? _promoMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -753,12 +757,46 @@ class _CartScreenState extends State<CartScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _promoController,
+                            decoration: InputDecoration(
+                              labelText: 'Promo Code (e.g. SAVE10)',
+                              isDense: true,
+                              errorText: _promoMessage != null && _appliedDiscount == 0 ? _promoMessage : null,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () {
+                            final res = PromoCodeEngine.evaluate(
+                              code: _promoController.text,
+                              cartTotal: total,
+                            );
+                            setState(() {
+                              _appliedDiscount = res.discountAmount;
+                              _promoMessage = res.message;
+                            });
+                          },
+                          child: const Text('Apply'),
+                        ),
+                      ],
+                    ),
+                    if (_appliedDiscount > 0) ...[
+                      const SizedBox(height: 4),
+                      Text('Discount: -\$${_appliedDiscount.toStringAsFixed(2)} (${_promoMessage ?? ''})',
+                          style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                    ],
                     const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Total:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        Text('\$${total.toStringAsFixed(2)}',
+                        const Text('Final Total:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text('\$${(total - _appliedDiscount).clamp(0.0, double.infinity).toStringAsFixed(2)}',
                             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green)),
                       ],
                     ),

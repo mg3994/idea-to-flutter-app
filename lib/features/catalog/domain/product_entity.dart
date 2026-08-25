@@ -15,6 +15,9 @@ class ProductEntity {
   final Map<String, dynamic> resolvedSchema;
   final dynamic areaServed;
   final String publishedAt;
+  final double? ratingValue;
+  final int? reviewCount;
+  final List<Map<String, dynamic>> reviews;
 
   ProductEntity({
     required this.id,
@@ -31,6 +34,9 @@ class ProductEntity {
     required this.resolvedSchema,
     this.areaServed,
     required this.publishedAt,
+    this.ratingValue,
+    this.reviewCount,
+    this.reviews = const [],
   });
 
   factory ProductEntity.fromPostMap({
@@ -87,6 +93,26 @@ class ProductEntity {
       }
     }
 
+    double? ratingValue;
+    int? reviewCount;
+    if (resolvedSchema['aggregateRating'] != null && resolvedSchema['aggregateRating'] is Map) {
+      final agg = resolvedSchema['aggregateRating'] as Map;
+      ratingValue = double.tryParse(agg['ratingValue']?.toString() ?? '');
+      reviewCount = int.tryParse(agg['reviewCount']?.toString() ?? agg['ratingCount']?.toString() ?? '');
+    }
+
+    final List<Map<String, dynamic>> parsedReviews = [];
+    if (resolvedSchema['review'] != null) {
+      final rev = resolvedSchema['review'];
+      if (rev is List) {
+        for (final r in rev) {
+          if (r is Map<String, dynamic>) parsedReviews.add(r);
+        }
+      } else if (rev is Map<String, dynamic>) {
+        parsedReviews.add(rev);
+      }
+    }
+
     return ProductEntity(
       id: postMap['id']?.toString() ?? '',
       blogId: blogId,
@@ -102,6 +128,9 @@ class ProductEntity {
       resolvedSchema: resolvedSchema,
       areaServed: resolvedSchema['areaServed'],
       publishedAt: postMap['published']?.toString() ?? '',
+      ratingValue: ratingValue,
+      reviewCount: reviewCount,
+      reviews: parsedReviews,
     );
   }
 }
