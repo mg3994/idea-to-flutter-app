@@ -146,6 +146,7 @@ class _BlogStoreAppState extends State<BlogStoreApp> {
               ),
           '/profile': (context, state) => ProfileScreen(
                 authService: FirebaseAuthService(),
+                database: _database,
               ),
           '/wishlist': (context, state) => WishlistScreen(
                 wishlistItemsSignal: _wishlistItemsSignal,
@@ -816,6 +817,20 @@ class _CartScreenState extends State<CartScreen> {
     );
 
     final response = await widget.checkoutClient.processOrder(payload);
+
+    if (response.success) {
+      // Record order locally in Drift DB
+      await widget.database.into(widget.database.orderRecords).insert(
+            OrderRecordsCompanion.insert(
+              orderId: response.orderId ?? 'ORD-${DateTime.now().millisecondsSinceEpoch}',
+              userId: payload.userId,
+              totalAmount: payload.totalAmount,
+              paymentMethod: payload.paymentMethod.name,
+              itemsJson: jsonEncode(payload.items.map((i) => i.toJson()).toList()),
+              shippingAddressJson: jsonEncode(payload.shippingAddress),
+            ),
+          );
+    }
 
     if (context.mounted) {
       showDialog(

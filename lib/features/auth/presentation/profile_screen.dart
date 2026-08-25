@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../auth_service.dart';
+import '../../cart_wishlist/data/app_database.dart';
 
 class ProfileScreen extends StatefulWidget {
   final AuthService authService;
+  final AppDatabase database;
 
   const ProfileScreen({
     super.key,
     required this.authService,
+    required this.database,
   });
 
   @override
@@ -95,6 +98,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ],
                   ],
+                  const SizedBox(height: 20),
+                  const Text('Order History', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 8),
+                  FutureBuilder<List<OrderRecord>>(
+                    future: widget.database.select(widget.database.orderRecords).get(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      final orders = snapshot.data ?? [];
+                      if (orders.isEmpty) {
+                        return const Text('No orders placed yet.', style: TextStyle(color: Colors.grey));
+                      }
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: orders.length,
+                        itemBuilder: (context, index) {
+                          final order = orders[index];
+                          return Card(
+                            child: ListTile(
+                              leading: const Icon(Icons.receipt_long, color: Colors.deepPurple),
+                              title: Text('Order #${order.orderId}'),
+                              subtitle: Text('\$${order.totalAmount.toStringAsFixed(2)} via ${order.paymentMethod.toUpperCase()}'),
+                              trailing: Chip(
+                                label: Text(order.status, style: const TextStyle(fontSize: 10)),
+                                backgroundColor: Colors.green.shade100,
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
                   const SizedBox(height: 30),
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(

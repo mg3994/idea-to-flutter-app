@@ -12,7 +12,12 @@ class SchemaResolver {
   });
 
   /// Resolves raw JSON-LD schema by combining base references and overrides recursively.
-  Future<Map<String, dynamic>> resolve(Map<String, dynamic> rawSchema) async {
+  Future<Map<String, dynamic>> resolve(
+    Map<String, dynamic> rawSchema, [
+    Set<String>? visitedKeys,
+  ]) async {
+    final visited = visitedKeys ?? <String>{};
+
     final String? baseRaw = rawSchema['@base'] as String?;
     final BaseContext? baseContext = BaseContext.parse(baseRaw, fallbackBlogId: defaultBlogId);
     final String? idRef = rawSchema['@id'] as String?;
@@ -26,11 +31,18 @@ class SchemaResolver {
 
     if (targetPostId == null) return rawSchema;
 
+    final String contextKey = '$targetBlogId/$targetPostId';
+    if (visited.contains(contextKey)) {
+      // Prevent circular context inheritance loops
+      return rawSchema;
+    }
+    visited.add(contextKey);
+
     try {
       final Map<String, dynamic>? baseSchema = await fetchPostSchema(targetBlogId, targetPostId);
       if (baseSchema == null) return rawSchema;
 
-      final Map<String, dynamic> resolvedBase = await resolve(baseSchema);
+      final Map<String, dynamic> resolvedBase = await resolve(baseSchema, visited);
 
       return SchemaOverride.deepMerge(
         baseData: resolvedBase,

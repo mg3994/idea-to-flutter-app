@@ -51,7 +51,21 @@ class CachedProducts extends Table {
   Set<Column> get primaryKeys => {id};
 }
 
-@DriftDatabase(tables: [CartItems, WishlistItems, CachedProducts])
+class OrderRecords extends Table {
+  TextColumn get orderId => text()();
+  TextColumn get userId => text()();
+  RealColumn get totalAmount => real()();
+  TextColumn get paymentMethod => text()();
+  TextColumn get itemsJson => text()();
+  TextColumn get shippingAddressJson => text()();
+  TextColumn get status => text().withDefault(const Constant('PLACED'))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKeys => {orderId};
+}
+
+@DriftDatabase(tables: [CartItems, WishlistItems, CachedProducts, OrderRecords])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
