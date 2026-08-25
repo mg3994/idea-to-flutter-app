@@ -82,16 +82,30 @@ class CartReverificationService {
   }
 
   double? _extractPrice(Map<String, dynamic> schema) {
+    final priceInfo = _extractPriceAndCurrency(schema);
+    return priceInfo?['price'] as double?;
+  }
+
+  Map<String, dynamic>? _extractPriceAndCurrency(Map<String, dynamic> schema) {
     if (schema['offers'] != null) {
       final offers = schema['offers'];
       if (offers is Map && offers['price'] != null) {
-        return double.tryParse(offers['price'].toString());
+        return {
+          'price': double.tryParse(offers['price'].toString()),
+          'currency': offers['priceCurrency']?.toString() ?? schema['priceCurrency']?.toString() ?? 'USD',
+        };
       } else if (offers is List && offers.isNotEmpty && offers.first['price'] != null) {
-        return double.tryParse(offers.first['price'].toString());
+        return {
+          'price': double.tryParse(offers.first['price'].toString()),
+          'currency': offers.first['priceCurrency']?.toString() ?? schema['priceCurrency']?.toString() ?? 'USD',
+        };
       }
     }
     if (schema['price'] != null) {
-      return double.tryParse(schema['price'].toString());
+      return {
+        'price': double.tryParse(schema['price'].toString()),
+        'currency': schema['priceCurrency']?.toString() ?? 'USD',
+      };
     }
     return null;
   }

@@ -18,6 +18,7 @@ import 'features/cart_wishlist/data/product_cache_manager.dart';
 import 'features/checkout/data/checkout_client.dart';
 import 'features/checkout/domain/promo_code_engine.dart';
 import 'shared/i18n/schema_i18n_resolver.dart';
+import 'shared/i18n/currency_converter.dart';
 import 'package:dio/dio.dart';
 
 void main() async {
@@ -48,6 +49,8 @@ class _BlogStoreAppState extends State<BlogStoreApp> {
   final Signal<String> _searchQuerySignal = Signal('');
   final Signal<String> _userLocationCitySignal = Signal('');
   final Signal<SortOption> _sortOptionSignal = Signal(SortOption.featured);
+  final Signal<String> _selectedCurrencySignal = Signal('USD');
+  final Signal<ThemeMode> _themeModeSignal = Signal(ThemeMode.light);
   final Signal<List<CartItem>> _cartItemsSignal = Signal([]);
   final Signal<List<WishlistItem>> _wishlistItemsSignal = Signal([]);
 
@@ -120,63 +123,78 @@ class _BlogStoreAppState extends State<BlogStoreApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Blog Store',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
-          brightness: Brightness.light,
-        ),
-      ),
-      home: KaiselRouter(
-        routes: {
-          '/': (context, state) => CatalogScreen(
-                productsSignal: _productsSignal,
-                isLoadingSignal: _isLoadingSignal,
-                errorSignal: _errorSignal,
-                searchQuerySignal: _searchQuerySignal,
-                userLocationCitySignal: _userLocationCitySignal,
-                sortOptionSignal: _sortOptionSignal,
-                cartItemsSignal: _cartItemsSignal,
-                wishlistItemsSignal: _wishlistItemsSignal,
-                onRefresh: _loadProducts,
-                onAddToCart: _addToCart,
-                onToggleWishlist: _toggleWishlist,
-              ),
-          '/profile': (context, state) => ProfileScreen(
-                authService: FirebaseAuthService(),
-                database: _database,
-              ),
-          '/wishlist': (context, state) => WishlistScreen(
-                wishlistItemsSignal: _wishlistItemsSignal,
-                database: _database,
-                onWishlistUpdated: _loadCartAndWishlist,
-                onMoveToCart: (postId, title, price, imageUrl, schemaJson) async {
-                  await _database.into(_database.cartItems).insert(
-                        CartItemsCompanion.insert(
-                          id: 'cart_${postId}_${DateTime.now().millisecondsSinceEpoch}',
-                          postId: postId,
-                          blogId: EnvConfig.defaultBlogId,
-                          title: title,
-                          price: price,
-                          imageUrl: Value(imageUrl),
-                          schemaJson: schemaJson,
-                        ),
-                      );
-                  _loadCartAndWishlist();
-                },
-              ),
-          '/cart': (context, state) => CartScreen(
-                cartItemsSignal: _cartItemsSignal,
-                reverificationService: _reverificationService,
-                checkoutClient: _checkoutClient,
-                database: _database,
-                onCartUpdated: _loadCartAndWishlist,
-              ),
-        },
-      ),
+    return BlocSignalBuilder<ThemeMode>(
+      signal: _themeModeSignal,
+      builder: (context, themeMode) {
+        return MaterialApp(
+          title: 'Blog Store',
+          debugShowCheckedModeBanner: false,
+          themeMode: themeMode,
+          theme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.deepPurple,
+              brightness: Brightness.light,
+            ),
+          ),
+          darkTheme: ThemeData(
+            useMaterial3: true,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.deepPurple,
+              brightness: Brightness.dark,
+            ),
+          ),
+          home: KaiselRouter(
+            routes: {
+              '/': (context, state) => CatalogScreen(
+                    productsSignal: _productsSignal,
+                    isLoadingSignal: _isLoadingSignal,
+                    errorSignal: _errorSignal,
+                    searchQuerySignal: _searchQuerySignal,
+                    userLocationCitySignal: _userLocationCitySignal,
+                    sortOptionSignal: _sortOptionSignal,
+                    selectedCurrencySignal: _selectedCurrencySignal,
+                    themeModeSignal: _themeModeSignal,
+                    cartItemsSignal: _cartItemsSignal,
+                    wishlistItemsSignal: _wishlistItemsSignal,
+                    onRefresh: _loadProducts,
+                    onAddToCart: _addToCart,
+                    onToggleWishlist: _toggleWishlist,
+                  ),
+              '/profile': (context, state) => ProfileScreen(
+                    authService: FirebaseAuthService(),
+                    database: _database,
+                  ),
+              '/wishlist': (context, state) => WishlistScreen(
+                    wishlistItemsSignal: _wishlistItemsSignal,
+                    database: _database,
+                    onWishlistUpdated: _loadCartAndWishlist,
+                    onMoveToCart: (postId, title, price, imageUrl, schemaJson) async {
+                      await _database.into(_database.cartItems).insert(
+                            CartItemsCompanion.insert(
+                              id: 'cart_${postId}_${DateTime.now().millisecondsSinceEpoch}',
+                              postId: postId,
+                              blogId: EnvConfig.defaultBlogId,
+                              title: title,
+                              price: price,
+                              imageUrl: Value(imageUrl),
+                              schemaJson: schemaJson,
+                            ),
+                          );
+                      _loadCartAndWishlist();
+                    },
+                  ),
+              '/cart': (context, state) => CartScreen(
+                    cartItemsSignal: _cartItemsSignal,
+                    reverificationService: _reverificationService,
+                    checkoutClient: _checkoutClient,
+                    database: _database,
+                    onCartUpdated: _loadCartAndWishlist,
+                  ),
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -238,6 +256,8 @@ class CatalogScreen extends StatelessWidget {
   final Signal<String> searchQuerySignal;
   final Signal<String> userLocationCitySignal;
   final Signal<SortOption> sortOptionSignal;
+  final Signal<String> selectedCurrencySignal;
+  final Signal<ThemeMode> themeModeSignal;
   final Signal<List<CartItem>> cartItemsSignal;
   final Signal<List<WishlistItem>> wishlistItemsSignal;
   final Future<void> Function() onRefresh;
@@ -252,6 +272,8 @@ class CatalogScreen extends StatelessWidget {
     required this.searchQuerySignal,
     required this.userLocationCitySignal,
     required this.sortOptionSignal,
+    required this.selectedCurrencySignal,
+    required this.themeModeSignal,
     required this.cartItemsSignal,
     required this.wishlistItemsSignal,
     required this.onRefresh,
@@ -265,6 +287,36 @@ class CatalogScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Blog Store'),
         actions: [
+          BlocSignalBuilder<String>(
+            signal: selectedCurrencySignal,
+            builder: (context, currency) {
+              return DropdownButton<String>(
+                value: currency,
+                underline: const SizedBox.shrink(),
+                icon: const Icon(Icons.currency_exchange, size: 20),
+                items: CurrencyConverter.currencySymbols.keys.map((c) {
+                  return DropdownMenuItem(
+                    value: c,
+                    child: Text(c, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) selectedCurrencySignal.value = val;
+                },
+              );
+            },
+          ),
+          BlocSignalBuilder<ThemeMode>(
+            signal: themeModeSignal,
+            builder: (context, currentMode) {
+              return IconButton(
+                icon: Icon(currentMode == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode),
+                onPressed: () {
+                  themeModeSignal.value = currentMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+                },
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.person),
             onPressed: () => KaiselRouter.of(context).push('/profile'),
@@ -444,40 +496,46 @@ class CatalogScreen extends StatelessWidget {
                                 return BlocSignalBuilder<SortOption>(
                                   signal: sortOptionSignal,
                                   builder: (context, sortOpt) {
-                                    final sorted = CatalogSorter.sort(filtered, sortOpt);
+                                    return BlocSignalBuilder<String>(
+                                      signal: selectedCurrencySignal,
+                                      builder: (context, targetCurrency) {
+                                        final sorted = CatalogSorter.sort(filtered, sortOpt);
 
-                                    return RefreshIndicator(
-                                      onRefresh: onRefresh,
-                                      child: GridView.builder(
-                                        padding: const EdgeInsets.all(12),
-                                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                          crossAxisCount: 2,
-                                          childAspectRatio: 0.75,
-                                          crossAxisSpacing: 12,
-                                          mainAxisSpacing: 12,
-                                        ),
-                                        itemCount: sorted.length,
-                                        itemBuilder: (context, index) {
-                                          final product = sorted[index];
-                                          return ProductCard(
-                                            product: product,
-                                            onAddToCart: () => onAddToCart(product),
-                                            onToggleWishlist: () => onToggleWishlist(product),
-                                            onTap: () {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) => ProductDetailScreen(
-                                                    product: product,
-                                                    onAddToCart: onAddToCart,
-                                                    onToggleWishlist: onToggleWishlist,
-                                                  ),
-                                                ),
+                                        return RefreshIndicator(
+                                          onRefresh: onRefresh,
+                                          child: GridView.builder(
+                                            padding: const EdgeInsets.all(12),
+                                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                              crossAxisCount: 2,
+                                              childAspectRatio: 0.75,
+                                              crossAxisSpacing: 12,
+                                              mainAxisSpacing: 12,
+                                            ),
+                                            itemCount: sorted.length,
+                                            itemBuilder: (context, index) {
+                                              final product = sorted[index];
+                                              return ProductCard(
+                                                product: product,
+                                                targetCurrency: targetCurrency,
+                                                onAddToCart: () => onAddToCart(product),
+                                                onToggleWishlist: () => onToggleWishlist(product),
+                                                onTap: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) => ProductDetailScreen(
+                                                        product: product,
+                                                        onAddToCart: onAddToCart,
+                                                        onToggleWishlist: onToggleWishlist,
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
                                               );
                                             },
-                                          );
-                                        },
-                                      ),
+                                          ),
+                                        );
+                                      },
                                     );
                                   },
                                 );
@@ -527,6 +585,7 @@ class CatalogScreen extends StatelessWidget {
 
 class ProductCard extends StatelessWidget {
   final ProductEntity product;
+  final String targetCurrency;
   final VoidCallback onAddToCart;
   final VoidCallback onToggleWishlist;
   final VoidCallback onTap;
@@ -534,6 +593,7 @@ class ProductCard extends StatelessWidget {
   const ProductCard({
     super.key,
     required this.product,
+    this.targetCurrency = 'USD',
     required this.onAddToCart,
     required this.onToggleWishlist,
     required this.onTap,
@@ -542,6 +602,11 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final formattedTime = SchemaI18nResolver.formatLocalTimestamp(product.publishedAt);
+    final formattedPrice = CurrencyConverter.format(
+      price: product.price,
+      fromCurrency: product.currency,
+      targetCurrency: targetCurrency,
+    );
 
     return InkWell(
       onTap: onTap,
@@ -581,7 +646,7 @@ class ProductCard extends StatelessWidget {
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  '\$${product.price.toStringAsFixed(2)} ${product.currency}',
+                    formattedPrice,
                   style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold),
                 ),
                 Text(

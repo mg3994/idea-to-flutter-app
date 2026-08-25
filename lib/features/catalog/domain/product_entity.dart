@@ -62,13 +62,14 @@ class ProductEntity {
       final offers = resolvedSchema['offers'];
       if (offers is Map) {
         price = double.tryParse(offers['price']?.toString() ?? '0') ?? 0.0;
-        currency = offers['priceCurrency']?.toString() ?? 'USD';
+        currency = offers['priceCurrency']?.toString() ?? resolvedSchema['priceCurrency']?.toString() ?? 'USD';
       } else if (offers is List && offers.isNotEmpty && offers.first is Map) {
         price = double.tryParse(offers.first['price']?.toString() ?? '0') ?? 0.0;
-        currency = offers.first['priceCurrency']?.toString() ?? 'USD';
+        currency = offers.first['priceCurrency']?.toString() ?? resolvedSchema['priceCurrency']?.toString() ?? 'USD';
       }
     } else if (resolvedSchema['price'] != null) {
       price = double.tryParse(resolvedSchema['price'].toString()) ?? 0.0;
+      currency = resolvedSchema['priceCurrency']?.toString() ?? 'USD';
     }
 
     String? imageUrl;

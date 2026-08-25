@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../domain/product_entity.dart';
 import '../../../shared/i18n/schema_i18n_resolver.dart';
+import '../../../shared/i18n/currency_converter.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final ProductEntity product;
@@ -64,7 +65,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                       ),
                       Text(
-                        '\$${product.price.toStringAsFixed(2)} ${product.currency}',
+                        CurrencyConverter.format(
+                          price: product.price,
+                          fromCurrency: product.currency,
+                          targetCurrency: product.currency,
+                        ),
                         style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                               color: Theme.of(context).primaryColor,
                               fontWeight: FontWeight.bold,
