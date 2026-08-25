@@ -65,7 +65,17 @@ class OrderRecords extends Table {
   Set<Column> get primaryKeys => {orderId};
 }
 
-@DriftDatabase(tables: [CartItems, WishlistItems, CachedProducts, OrderRecords])
+class QueuedOrders extends Table {
+  TextColumn get queueId => text()();
+  TextColumn get payloadJson => text()();
+  TextColumn get status => text().withDefault(const Constant('PENDING'))();
+  DateTimeColumn get queuedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKeys => {queueId};
+}
+
+@DriftDatabase(tables: [CartItems, WishlistItems, CachedProducts, OrderRecords, QueuedOrders])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? e]) : super(e ?? _openConnection());
 
