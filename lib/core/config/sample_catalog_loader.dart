@@ -1,4 +1,4 @@
-import '../domain/product_entity.dart';
+import '../../features/catalog/domain/product_entity.dart';
 import 'env_config.dart';
 
 class SampleCatalogLoader {
