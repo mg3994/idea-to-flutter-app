@@ -1,0 +1,202 @@
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../auth_service.dart';
+
+class ProfileScreen extends StatefulWidget {
+  final AuthService authService;
+
+  const ProfileScreen({
+    super.key,
+    required this.authService,
+  });
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final _phoneController = TextEditingController();
+  final _smsCodeController = TextEditingController();
+  String? _verificationId;
+  bool _isCodeSent = false;
+  bool _isLoading = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: widget.authService.authStateChanges,
+      builder: (context, snapshot) {
+        final user = snapshot.data;
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('User Profile & Auth'),
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (user != null) ...[
+                  Card(
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage: user.photoURL != null ? NetworkImage(user.photoURL!) : null,
+                        child: user.photoURL == null ? const Icon(Icons.person) : null,
+                      ),
+                      title: Text(user.displayName ?? 'Authenticated User'),
+                      subtitle: Text(user.email ?? user.phoneNumber ?? user.uid),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('Linked Credentials:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ...user.providerData.map(
+                    (p) => ListTile(
+                      leading: Icon(
+                        p.providerId == 'google.com'
+                            ? Icons.g_mobiledata
+                            : p.providerId == 'phone'
+                                ? Icons.phone
+                                : Icons.security,
+                      ),
+                      title: Text(p.providerId),
+                      subtitle: Text(p.email ?? p.phoneNumber ?? p.uid),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  if (!user.providerData.any((p) => p.providerId == 'phone')) ...[
+                    const Text('Link Phone Number (Optional)', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    if (!_isCodeSent) ...[
+                      TextField(
+                        controller: _phoneController,
+                        decoration: const InputDecoration(
+                          labelText: 'Phone Number (with country code, e.g. +1234567890)',
+                          prefixIcon: Icon(Icons.phone),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: _isLoading ? null : _sendPhoneCode,
+                        child: const Text('Send Verification Code'),
+                      ),
+                    ] else ...[
+                      TextField(
+                        controller: _smsCodeController,
+                        decoration: const InputDecoration(
+                          labelText: 'Enter 6-digit SMS Code',
+                          prefixIcon: Icon(Icons.pin),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: _isLoading ? null : _verifySMSCode,
+                        child: const Text('Link Phone Credential'),
+                      ),
+                    ],
+                  ],
+                  const SizedBox(height: 30),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Sign Out'),
+                    onPressed: () async {
+                      await widget.authService.signOut();
+                    },
+                  ),
+                ] else ...[
+                  Center(
+                    child: Column(
+                      children: [
+                        const Icon(Icons.account_circle, size: 80, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        const Text('Sign in to save wishlist and manage orders',
+                            style: TextStyle(fontSize: 16)),
+                        const SizedBox(height: 20),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.g_mobiledata, size: 28),
+                          label: const Text('Sign in with Google'),
+                          onPressed: () async {
+                            try {
+                              await widget.authService.signInWithGoogle();
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Sign in failed: $e')),
+                                );
+                              }
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _sendPhoneCode() async {
+    setState(() => _isLoading = true);
+    try {
+      await widget.authService.verifyPhone(
+        phoneNumber: _phoneController.text.trim(),
+        onVerificationCompleted: (cred) async {
+          await widget.authService.linkPhoneCredential(cred);
+          if (mounted) setState(() => _isLoading = false);
+        },
+        onVerificationFailed: (e) {
+          if (mounted) {
+            setState(() => _isLoading = false);
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Phone verification failed: $e')));
+          }
+        },
+        onCodeSent: (verificationId, resendToken) {
+          if (mounted) {
+            setState(() {
+              _verificationId = verificationId;
+              _isCodeSent = true;
+              _isLoading = false;
+            });
+          }
+        },
+        onCodeAutoRetrievalTimeout: (verificationId) {
+          _verificationId = verificationId;
+        },
+      );
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _verifySMSCode() async {
+    if (_verificationId == null) return;
+    setState(() => _isLoading = true);
+    try {
+      final credential = PhoneAuthProvider.credential(
+        verificationId: _verificationId!,
+        smsCode: _smsCodeController.text.trim(),
+      );
+      await widget.authService.linkPhoneCredential(credential);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isCodeSent = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Phone linked successfully!')));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to link phone: $e')));
+      }
+    }
+  }
+}

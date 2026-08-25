@@ -7,6 +7,10 @@ import 'core/utils/schema_resolver.dart';
 import 'core/utils/area_served_matcher.dart';
 import 'features/catalog/domain/product_entity.dart';
 import 'features/catalog/domain/label_query_parser.dart';
+import 'features/catalog/domain/catalog_sorter.dart';
+import 'features/catalog/presentation/product_detail_screen.dart';
+import 'features/auth/auth_service.dart';
+import 'features/auth/presentation/profile_screen.dart';
 import 'features/cart_wishlist/data/app_database.dart';
 import 'features/cart_wishlist/data/cart_reverification_service.dart';
 import 'features/checkout/data/checkout_client.dart';
@@ -39,6 +43,7 @@ class _BlogStoreAppState extends State<BlogStoreApp> {
   final Signal<String?> _errorSignal = Signal(null);
   final Signal<String> _searchQuerySignal = Signal('');
   final Signal<String> _userLocationCitySignal = Signal('');
+  final Signal<SortOption> _sortOptionSignal = Signal(SortOption.featured);
   final Signal<List<CartItem>> _cartItemsSignal = Signal([]);
   final Signal<List<WishlistItem>> _wishlistItemsSignal = Signal([]);
 
@@ -121,11 +126,15 @@ class _BlogStoreAppState extends State<BlogStoreApp> {
                 errorSignal: _errorSignal,
                 searchQuerySignal: _searchQuerySignal,
                 userLocationCitySignal: _userLocationCitySignal,
+                sortOptionSignal: _sortOptionSignal,
                 cartItemsSignal: _cartItemsSignal,
                 wishlistItemsSignal: _wishlistItemsSignal,
                 onRefresh: _loadProducts,
                 onAddToCart: _addToCart,
                 onToggleWishlist: _toggleWishlist,
+              ),
+          '/profile': (context, state) => ProfileScreen(
+                authService: FirebaseAuthService(),
               ),
           '/cart': (context, state) => CartScreen(
                 cartItemsSignal: _cartItemsSignal,
@@ -196,6 +205,7 @@ class CatalogScreen extends StatelessWidget {
   final Signal<String?> errorSignal;
   final Signal<String> searchQuerySignal;
   final Signal<String> userLocationCitySignal;
+  final Signal<SortOption> sortOptionSignal;
   final Signal<List<CartItem>> cartItemsSignal;
   final Signal<List<WishlistItem>> wishlistItemsSignal;
   final Future<void> Function() onRefresh;
@@ -209,6 +219,7 @@ class CatalogScreen extends StatelessWidget {
     required this.errorSignal,
     required this.searchQuerySignal,
     required this.userLocationCitySignal,
+    required this.sortOptionSignal,
     required this.cartItemsSignal,
     required this.wishlistItemsSignal,
     required this.onRefresh,
@@ -222,6 +233,10 @@ class CatalogScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Blog Store'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () => KaiselRouter.of(context).push('/profile'),
+          ),
           IconButton(
             icon: const Icon(Icons.location_on),
             onPressed: () => _showLocationDialog(context),
@@ -258,14 +273,36 @@ class CatalogScreen extends StatelessWidget {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search or label:... (e.g., label:electronics | mobile)',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onChanged: (val) => searchQuerySignal.value = val,
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    decoration: InputDecoration(
+                      hintText: 'Search or label:... (e.g., label:electronics | mobile)',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onChanged: (val) => searchQuerySignal.value = val,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                BlocSignalBuilder<SortOption>(
+                  signal: sortOptionSignal,
+                  builder: (context, currentSort) {
+                    return PopupMenuButton<SortOption>(
+                      icon: const Icon(Icons.sort),
+                      onSelected: (option) => sortOptionSignal.value = option,
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(value: SortOption.featured, child: Text('Featured')),
+                        PopupMenuItem(value: SortOption.priceLowToHigh, child: Text('Price: Low to High')),
+                        PopupMenuItem(value: SortOption.priceHighToLow, child: Text('Price: High to Low')),
+                        PopupMenuItem(value: SortOption.newest, child: Text('Newest')),
+                      ],
+                    );
+                  },
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -317,26 +354,45 @@ class CatalogScreen extends StatelessWidget {
                                   return const Center(child: Text('No products found matching criteria.'));
                                 }
 
-                                return RefreshIndicator(
-                                  onRefresh: onRefresh,
-                                  child: GridView.builder(
-                                    padding: const EdgeInsets.all(12),
-                                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 2,
-                                      childAspectRatio: 0.75,
-                                      crossAxisSpacing: 12,
-                                      mainAxisSpacing: 12,
-                                    ),
-                                    itemCount: filtered.length,
-                                    itemBuilder: (context, index) {
-                                      final product = filtered[index];
-                                      return ProductCard(
-                                        product: product,
-                                        onAddToCart: () => onAddToCart(product),
-                                        onToggleWishlist: () => onToggleWishlist(product),
-                                      );
-                                    },
-                                  ),
+                                return BlocSignalBuilder<SortOption>(
+                                  signal: sortOptionSignal,
+                                  builder: (context, sortOpt) {
+                                    final sorted = CatalogSorter.sort(filtered, sortOpt);
+
+                                    return RefreshIndicator(
+                                      onRefresh: onRefresh,
+                                      child: GridView.builder(
+                                        padding: const EdgeInsets.all(12),
+                                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                          crossAxisCount: 2,
+                                          childAspectRatio: 0.75,
+                                          crossAxisSpacing: 12,
+                                          mainAxisSpacing: 12,
+                                        ),
+                                        itemCount: sorted.length,
+                                        itemBuilder: (context, index) {
+                                          final product = sorted[index];
+                                          return ProductCard(
+                                            product: product,
+                                            onAddToCart: () => onAddToCart(product),
+                                            onToggleWishlist: () => onToggleWishlist(product),
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) => ProductDetailScreen(
+                                                    product: product,
+                                                    onAddToCart: onAddToCart,
+                                                    onToggleWishlist: onToggleWishlist,
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    );
+                                  },
                                 );
                               },
                             );
@@ -386,22 +442,27 @@ class ProductCard extends StatelessWidget {
   final ProductEntity product;
   final VoidCallback onAddToCart;
   final VoidCallback onToggleWishlist;
+  final VoidCallback onTap;
 
   const ProductCard({
     super.key,
     required this.product,
     required this.onAddToCart,
     required this.onToggleWishlist,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final formattedTime = SchemaI18nResolver.formatLocalTimestamp(product.publishedAt);
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Column(
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
@@ -461,6 +522,7 @@ class ProductCard extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }
