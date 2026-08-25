@@ -362,6 +362,34 @@ class CatalogScreen extends StatelessWidget {
               ],
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: BlocSignalBuilder<List<ProductEntity>>(
+              signal: productsSignal,
+              builder: (context, products) {
+                final allLabels = products.expand((p) => p.labels).toSet().toList();
+                if (allLabels.isEmpty) return const SizedBox.shrink();
+
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: allLabels.map((lbl) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6.0),
+                        child: ActionChip(
+                          avatar: const Icon(Icons.label_outline, size: 14),
+                          label: Text(lbl, style: const TextStyle(fontSize: 12)),
+                          onPressed: () {
+                            searchQuerySignal.value = 'label:$lbl';
+                          },
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                );
+              },
+            ),
+          ),
           Expanded(
             child: BlocSignalBuilder<bool>(
               signal: isLoadingSignal,
@@ -584,7 +612,7 @@ class ProductCard extends StatelessWidget {
   }
 }
 
-class CartScreen extends StatelessWidget {
+class CartScreen extends StatefulWidget {
   final Signal<List<CartItem>> cartItemsSignal;
   final CartReverificationService reverificationService;
   final CheckoutClient checkoutClient;
@@ -601,13 +629,32 @@ class CartScreen extends StatelessWidget {
   });
 
   @override
+  State<CartScreen> createState() => _CartScreenState();
+}
+
+class _CartScreenState extends State<CartScreen> {
+  PaymentMethod _selectedPayment = PaymentMethod.upi;
+  final _cityController = TextEditingController(text: 'New York');
+  final _countryController = TextEditingController(text: 'USA');
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Your Cart'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_sweep),
+            tooltip: 'Clear Cart',
+            onPressed: () async {
+              await widget.database.delete(widget.database.cartItems).go();
+              widget.onCartUpdated();
+            },
+          ),
+        ],
       ),
       body: BlocSignalBuilder<List<CartItem>>(
-        signal: cartItemsSignal,
+        signal: widget.cartItemsSignal,
         builder: (context, items) {
           if (items.isEmpty) {
             return const Center(child: Text('Your cart is empty.'));
@@ -622,15 +669,44 @@ class CartScreen extends StatelessWidget {
                   itemCount: items.length,
                   itemBuilder: (context, index) {
                     final item = items[index];
-                    return ListTile(
-                      title: Text(item.title),
-                      subtitle: Text('\$${item.price} x ${item.quantity}'),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () async {
-                          await (database.delete(database.cartItems)..where((tbl) => tbl.id.equals(item.id))).go();
-                          onCartUpdated();
-                        },
+                    return Card(
+                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      child: ListTile(
+                        leading: item.imageUrl != null
+                            ? Image.network(item.imageUrl!, width: 50, height: 50, fit: BoxFit.cover)
+                            : const Icon(Icons.shopping_bag),
+                        title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: Text('\$${item.price.toStringAsFixed(2)} x ${item.quantity} = \$${(item.price * item.quantity).toStringAsFixed(2)}'),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.remove_circle_outline, size: 20),
+                              onPressed: () async {
+                                if (item.quantity > 1) {
+                                  await (widget.database.update(widget.database.cartItems)
+                                        ..where((tbl) => tbl.id.equals(item.id)))
+                                      .write(CartItemsCompanion(quantity: Value(item.quantity - 1)));
+                                } else {
+                                  await (widget.database.delete(widget.database.cartItems)
+                                        ..where((tbl) => tbl.id.equals(item.id)))
+                                      .go();
+                                }
+                                widget.onCartUpdated();
+                              },
+                            ),
+                            Text('${item.quantity}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            IconButton(
+                              icon: const Icon(Icons.add_circle_outline, size: 20),
+                              onPressed: () async {
+                                await (widget.database.update(widget.database.cartItems)
+                                      ..where((tbl) => tbl.id.equals(item.id)))
+                                    .write(CartItemsCompanion(quantity: Value(item.quantity + 1)));
+                                widget.onCartUpdated();
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -638,12 +714,45 @@ class CartScreen extends StatelessWidget {
               ),
               Container(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: Colors.white,
                   boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
                 ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const Text('Payment Method', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Wrap(
+                      spacing: 8,
+                      children: PaymentMethod.values.map((method) {
+                        return ChoiceChip(
+                          label: Text(method.name.toUpperCase()),
+                          selected: _selectedPayment == method,
+                          onSelected: (selected) {
+                            if (selected) setState(() => _selectedPayment = method);
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _cityController,
+                            decoration: const InputDecoration(labelText: 'City', isDense: true),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: _countryController,
+                            decoration: const InputDecoration(labelText: 'Country', isDense: true),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -673,8 +782,8 @@ class CartScreen extends StatelessWidget {
 
   Future<void> _handleCheckout(BuildContext context, List<CartItem> items, double total) async {
     // 1. Live price re-verification
-    final verificationResults = await reverificationService.reverifyCart();
-    onCartUpdated();
+    final verificationResults = await widget.reverificationService.reverifyCart();
+    widget.onCartUpdated();
 
     final invalidResults = verificationResults.where((r) => !r.isValid).toList();
     if (invalidResults.isNotEmpty) {
@@ -702,11 +811,11 @@ class CartScreen extends StatelessWidget {
       userId: 'user_123',
       items: items.map((i) => OrderItem(id: i.postId, title: i.title, price: i.price, quantity: i.quantity)).toList(),
       totalAmount: total,
-      paymentMethod: PaymentMethod.upi,
-      shippingAddress: {'city': 'New York', 'country': 'USA'},
+      paymentMethod: _selectedPayment,
+      shippingAddress: {'city': _cityController.text, 'country': _countryController.text},
     );
 
-    final response = await checkoutClient.processOrder(payload);
+    final response = await widget.checkoutClient.processOrder(payload);
 
     if (context.mounted) {
       showDialog(
@@ -719,8 +828,8 @@ class CartScreen extends StatelessWidget {
               onPressed: () async {
                 Navigator.pop(context);
                 if (response.success) {
-                  await database.delete(database.cartItems).go();
-                  onCartUpdated();
+                  await widget.database.delete(widget.database.cartItems).go();
+                  widget.onCartUpdated();
                   KaiselRouter.of(context).pop();
                 }
               },
