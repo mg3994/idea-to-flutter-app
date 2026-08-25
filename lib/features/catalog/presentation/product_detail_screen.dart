@@ -4,6 +4,7 @@ import '../domain/product_entity.dart';
 import '../../../shared/i18n/schema_i18n_resolver.dart';
 import '../../../shared/i18n/currency_converter.dart';
 import '../domain/schema_share_utility.dart';
+import '../../../core/utils/schema_audit_utility.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final ProductEntity product;
@@ -69,6 +70,65 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const Divider(),
+                  Builder(
+                    builder: (context) {
+                      final auditReport = SchemaAuditUtility.audit(product.resolvedSchema);
+                      return Card(
+                        color: auditReport.healthScorePercentage >= 80
+                            ? Colors.green.shade50
+                            : Colors.orange.shade50,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        auditReport.healthScorePercentage >= 80 ? Icons.verified : Icons.warning_amber,
+                                        color: auditReport.healthScorePercentage >= 80 ? Colors.green : Colors.orange,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Schema Health Score: ${auditReport.healthScorePercentage}%',
+                                        style: const TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                  Chip(
+                                    label: Text(
+                                      auditReport.isValidProduct ? 'Valid Schema' : 'Incomplete',
+                                      style: const TextStyle(fontSize: 10),
+                                    ),
+                                    backgroundColor: auditReport.isValidProduct ? Colors.green.shade100 : Colors.red.shade100,
+                                  ),
+                                ],
+                              ),
+                              if (auditReport.missingFields.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Missing Required Fields: ${auditReport.missingFields.join(", ")}',
+                                  style: const TextStyle(color: Colors.red, fontSize: 12),
+                                ),
+                              ],
+                              if (auditReport.warnings.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Warnings: ${auditReport.warnings.join(", ")}',
+                                  style: const TextStyle(color: Colors.orange, fontSize: 11),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
