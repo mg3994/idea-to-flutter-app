@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
 import 'package:kaisel/kaisel.dart';
 import 'core/config/env_config.dart';
+import 'core/config/sample_catalog_loader.dart';
 import 'core/network/blogger_data_service.dart';
 import 'core/utils/schema_resolver.dart';
 import 'core/utils/area_served_matcher.dart';
@@ -295,6 +296,17 @@ class CatalogScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Blog Store'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.dataset),
+            tooltip: 'Load Sample Catalog',
+            onPressed: () async {
+              final samples = SampleCatalogLoader.getSampleProducts();
+              productsSignal.value = samples;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Loaded Master-Variant sample schema catalog!')),
+              );
+            },
+          ),
           BlocSignalBuilder<String>(
             signal: selectedCurrencySignal,
             builder: (context, currency) {
