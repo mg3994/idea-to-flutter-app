@@ -11,8 +11,10 @@ import 'features/catalog/domain/catalog_sorter.dart';
 import 'features/catalog/presentation/product_detail_screen.dart';
 import 'features/auth/auth_service.dart';
 import 'features/auth/presentation/profile_screen.dart';
+import 'features/cart_wishlist/presentation/wishlist_screen.dart';
 import 'features/cart_wishlist/data/app_database.dart';
 import 'features/cart_wishlist/data/cart_reverification_service.dart';
+import 'features/cart_wishlist/data/product_cache_manager.dart';
 import 'features/checkout/data/checkout_client.dart';
 import 'shared/i18n/schema_i18n_resolver.dart';
 import 'package:dio/dio.dart';
@@ -34,6 +36,7 @@ class _BlogStoreAppState extends State<BlogStoreApp> {
   late final BloggerDataService _bloggerDataService;
   late final SchemaResolver _schemaResolver;
   late final AppDatabase _database;
+  late final ProductCacheManager _cacheManager;
   late final CartReverificationService _reverificationService;
   late final CheckoutClient _checkoutClient;
 
@@ -60,6 +63,7 @@ class _BlogStoreAppState extends State<BlogStoreApp> {
       },
     );
     _database = AppDatabase();
+    _cacheManager = ProductCacheManager(database: _database);
     _reverificationService = CartReverificationService(
       bloggerDataService: _bloggerDataService,
       schemaResolver: _schemaResolver,
@@ -99,8 +103,15 @@ class _BlogStoreAppState extends State<BlogStoreApp> {
       }
 
       _productsSignal.value = loadedProducts;
+      await _cacheManager.cacheProducts(loadedProducts);
     } catch (e) {
-      _errorSignal.value = 'Failed to load products: $e';
+      // Fallback to local offline cache
+      final cached = await _cacheManager.getCachedProducts();
+      if (cached.isNotEmpty) {
+        _productsSignal.value = cached;
+      } else {
+        _errorSignal.value = 'Failed to load products and no offline cache available: $e';
+      }
     } finally {
       _isLoadingSignal.value = false;
     }
@@ -136,6 +147,25 @@ class _BlogStoreAppState extends State<BlogStoreApp> {
           '/profile': (context, state) => ProfileScreen(
                 authService: FirebaseAuthService(),
               ),
+          '/wishlist': (context, state) => WishlistScreen(
+                wishlistItemsSignal: _wishlistItemsSignal,
+                database: _database,
+                onWishlistUpdated: _loadCartAndWishlist,
+                onMoveToCart: (postId, title, price, imageUrl, schemaJson) async {
+                  await _database.into(_database.cartItems).insert(
+                        CartItemsCompanion.insert(
+                          id: 'cart_${postId}_${DateTime.now().millisecondsSinceEpoch}',
+                          postId: postId,
+                          blogId: EnvConfig.defaultBlogId,
+                          title: title,
+                          price: price,
+                          imageUrl: Value(imageUrl),
+                          schemaJson: schemaJson,
+                        ),
+                      );
+                  _loadCartAndWishlist();
+                },
+              ),
           '/cart': (context, state) => CartScreen(
                 cartItemsSignal: _cartItemsSignal,
                 reverificationService: _reverificationService,
@@ -167,7 +197,7 @@ class _BlogStoreAppState extends State<BlogStoreApp> {
               price: product.price,
               currency: Value(product.currency),
               imageUrl: Value(product.imageUrl),
-              schemaJson: product.resolvedSchema.toString(),
+              schemaJson: jsonEncode(product.resolvedSchema),
             ),
           );
     }
@@ -191,7 +221,7 @@ class _BlogStoreAppState extends State<BlogStoreApp> {
               price: product.price,
               currency: Value(product.currency),
               imageUrl: Value(product.imageUrl),
-              schemaJson: product.resolvedSchema.toString(),
+              schemaJson: jsonEncode(product.resolvedSchema),
             ),
           );
     }
@@ -236,6 +266,33 @@ class CatalogScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.person),
             onPressed: () => KaiselRouter.of(context).push('/profile'),
+          ),
+          BlocSignalBuilder<List<WishlistItem>>(
+            signal: wishlistItemsSignal,
+            builder: (context, wishItems) {
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.favorite_border),
+                    onPressed: () => KaiselRouter.of(context).push('/wishlist'),
+                  ),
+                  if (wishItems.isNotEmpty)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: CircleAvatar(
+                        radius: 8,
+                        backgroundColor: Colors.deepPurple,
+                        child: Text(
+                          '${wishItems.length}',
+                          style: const TextStyle(fontSize: 9, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.location_on),
