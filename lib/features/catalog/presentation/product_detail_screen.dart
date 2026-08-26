@@ -13,6 +13,7 @@ import '../../../core/utils/schema_shipping_details_checker.dart';
 import '../../../core/utils/schema_seller_checker.dart';
 import '../../../core/utils/schema_warranty_checker.dart';
 import '../../../core/utils/schema_brand_checker.dart';
+import '../../../core/utils/schema_condition_checker.dart';
 import '../../../core/utils/schema_faq_extractor.dart';
 import '../../../core/utils/schema_breadcrumb_utility.dart';
 
@@ -195,81 +196,96 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      if (product.brand != null)
-                        Chip(
-                          avatar: const Icon(Icons.branding_watermark, size: 16),
-                          label: Text('Brand: ${product.brand}'),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        if (product.brand != null)
+                          Chip(
+                            avatar: const Icon(Icons.branding_watermark, size: 16),
+                            label: Text('Brand: ${product.brand}'),
+                          ),
+                        const SizedBox(width: 8),
+                        Builder(
+                          builder: (context) {
+                            final status = SchemaInStockChecker.checkAvailability(product.resolvedSchema);
+                            final isAvailable = status == StockStatus.inStock;
+                            return Chip(
+                              avatar: Icon(isAvailable ? Icons.check_circle : Icons.inventory_2_outlined, size: 16, color: isAvailable ? Colors.green : Colors.red),
+                              label: Text(status.name.toUpperCase()),
+                              backgroundColor: isAvailable ? Colors.green.shade50 : Colors.red.shade50,
+                            );
+                          },
                         ),
-                      const SizedBox(width: 8),
-                      Builder(
-                        builder: (context) {
-                          final status = SchemaInStockChecker.checkAvailability(product.resolvedSchema);
-                          final isAvailable = status == StockStatus.inStock;
-                          return Chip(
-                            avatar: Icon(isAvailable ? Icons.check_circle : Icons.inventory_2_outlined, size: 16, color: isAvailable ? Colors.green : Colors.red),
-                            label: Text(status.name.toUpperCase()),
-                            backgroundColor: isAvailable ? Colors.green.shade50 : Colors.red.shade50,
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      Builder(
-                        builder: (context) {
-                          final returnInfo = SchemaReturnPolicyChecker.checkReturnPolicy(product.resolvedSchema);
-                          return Chip(
-                            avatar: Icon(returnInfo.isReturnable ? Icons.replay : Icons.assignment_return, size: 16, color: returnInfo.isReturnable ? Colors.blue : Colors.grey),
-                            label: Text(returnInfo.categoryName),
-                            backgroundColor: Colors.blue.shade50,
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      Builder(
-                        builder: (context) {
-                          final shipInfo = SchemaShippingDetailsChecker.checkShippingDetails(product.resolvedSchema);
-                          return Chip(
-                            avatar: const Icon(Icons.local_shipping, size: 16, color: Colors.teal),
-                            label: Text(shipInfo.deliveryWindowText),
-                            backgroundColor: Colors.teal.shade50,
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      Builder(
-                        builder: (context) {
-                          final sellerInfo = SchemaSellerChecker.checkSeller(product.resolvedSchema);
-                          return Chip(
-                            avatar: const Icon(Icons.storefront, size: 16, color: Colors.indigo),
-                            label: Text('Seller: ${sellerInfo.sellerName}'),
-                            backgroundColor: Colors.indigo.shade50,
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      Builder(
-                        builder: (context) {
-                          final warrantyInfo = SchemaWarrantyChecker.checkWarranty(product.resolvedSchema);
-                          return Chip(
-                            avatar: const Icon(Icons.verified_user, size: 16, color: Colors.amber),
-                            label: Text(warrantyInfo.warrantyText),
-                            backgroundColor: Colors.amber.shade50,
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      Builder(
-                        builder: (context) {
-                          final brandInfo = SchemaBrandChecker.checkBrand(product.resolvedSchema);
-                          return Chip(
-                            avatar: const Icon(Icons.branding_watermark, size: 16, color: Colors.purple),
-                            label: Text('Brand: ${brandInfo.brandName}'),
-                            backgroundColor: Colors.purple.shade50,
-                          );
-                        },
-                      ),
-                    ],
+                        const SizedBox(width: 8),
+                        Builder(
+                          builder: (context) {
+                            final returnInfo = SchemaReturnPolicyChecker.checkReturnPolicy(product.resolvedSchema);
+                            return Chip(
+                              avatar: Icon(returnInfo.isReturnable ? Icons.replay : Icons.assignment_return, size: 16, color: returnInfo.isReturnable ? Colors.blue : Colors.grey),
+                              label: Text(returnInfo.categoryName),
+                              backgroundColor: Colors.blue.shade50,
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        Builder(
+                          builder: (context) {
+                            final shipInfo = SchemaShippingDetailsChecker.checkShippingDetails(product.resolvedSchema);
+                            return Chip(
+                              avatar: const Icon(Icons.local_shipping, size: 16, color: Colors.teal),
+                              label: Text(shipInfo.deliveryWindowText),
+                              backgroundColor: Colors.teal.shade50,
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        Builder(
+                          builder: (context) {
+                            final sellerInfo = SchemaSellerChecker.checkSeller(product.resolvedSchema);
+                            return Chip(
+                              avatar: const Icon(Icons.storefront, size: 16, color: Colors.indigo),
+                              label: Text('Seller: ${sellerInfo.sellerName}'),
+                              backgroundColor: Colors.indigo.shade50,
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        Builder(
+                          builder: (context) {
+                            final warrantyInfo = SchemaWarrantyChecker.checkWarranty(product.resolvedSchema);
+                            return Chip(
+                              avatar: const Icon(Icons.verified_user, size: 16, color: Colors.amber),
+                              label: Text(warrantyInfo.warrantyText),
+                              backgroundColor: Colors.amber.shade50,
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        Builder(
+                          builder: (context) {
+                            final brandInfo = SchemaBrandChecker.checkBrand(product.resolvedSchema);
+                            return Chip(
+                              avatar: const Icon(Icons.branding_watermark, size: 16, color: Colors.purple),
+                              label: Text('Brand: ${brandInfo.brandName}'),
+                              backgroundColor: Colors.purple.shade50,
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        Builder(
+                          builder: (context) {
+                            final condition = SchemaConditionChecker.checkCondition(product.resolvedSchema);
+                            final text = SchemaConditionChecker.formatConditionName(condition);
+                            return Chip(
+                              avatar: const Icon(Icons.new_releases_outlined, size: 16, color: Colors.deepOrange),
+                              label: Text(text),
+                              backgroundColor: Colors.deepOrange.shade50,
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                   if (widget.siblingVariants.isNotEmpty) ...[
                     const SizedBox(height: 12),
