@@ -636,6 +636,7 @@ class CatalogScreen extends StatelessWidget {
                                                       builder: (context) => ProductDetailScreen(
                                                         product: product,
                                                     siblingVariants: siblings,
+                                                        catalogProducts: products,
                                                         onAddToCart: onAddToCart,
                                                         onToggleWishlist: onToggleWishlist,
                                                       ),

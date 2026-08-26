@@ -16,10 +16,12 @@ import '../../../core/utils/schema_brand_checker.dart';
 import '../../../core/utils/schema_condition_checker.dart';
 import '../../../core/utils/schema_faq_extractor.dart';
 import '../../../core/utils/schema_breadcrumb_utility.dart';
+import '../domain/schema_related_product_utility.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final ProductEntity product;
   final List<ProductEntity> siblingVariants;
+  final List<ProductEntity> catalogProducts;
   final Function(ProductEntity) onAddToCart;
   final Function(ProductEntity) onToggleWishlist;
 
@@ -27,6 +29,7 @@ class ProductDetailScreen extends StatefulWidget {
     super.key,
     required this.product,
     this.siblingVariants = const [],
+    this.catalogProducts = const [],
     required this.onAddToCart,
     required this.onToggleWishlist,
   });
@@ -114,6 +117,63 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       );
                     },
                   ),
+                  if (widget.catalogProducts.isNotEmpty) ...[
+                    Builder(
+                      builder: (context) {
+                        final related = SchemaRelatedProductUtility.getRelatedProducts(
+                          currentProduct: product,
+                          allProducts: widget.catalogProducts,
+                        );
+                        if (related.isEmpty) return const SizedBox.shrink();
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 20),
+                            const Text('You May Also Like', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              height: 140,
+                              child: ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: related.length,
+                                itemBuilder: (context, index) {
+                                  final rel = related[index];
+                                  return Container(
+                                    width: 140,
+                                    margin: const EdgeInsets.only(right: 12),
+                                    child: Card(
+                                      child: InkWell(
+                                        onTap: () {
+                                          setState(() => _activeProduct = rel);
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(8.0),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Expanded(
+                                                child: rel.imageUrl != null
+                                                    ? Image.network(rel.imageUrl!, fit: BoxFit.cover, width: double.infinity)
+                                                    : const Icon(Icons.shopping_bag, size: 36),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(rel.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                              Text('\$${rel.price.toStringAsFixed(2)}', style: TextStyle(color: Theme.of(context).primaryColor, fontSize: 11, fontWeight: FontWeight.bold)),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
                   const Divider(),
                   Builder(
                     builder: (context) {
