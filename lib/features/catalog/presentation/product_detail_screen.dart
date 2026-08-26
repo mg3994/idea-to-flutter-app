@@ -8,6 +8,7 @@ import '../../../core/utils/schema_audit_utility.dart';
 import '../../../core/utils/schema_export_manager.dart';
 import '../../../core/utils/schema_variant_matrix_utility.dart';
 import '../../../core/utils/schema_instock_checker.dart';
+import '../../../core/utils/schema_return_policy_checker.dart';
 import '../../../core/utils/schema_breadcrumb_utility.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -205,6 +206,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             avatar: Icon(isAvailable ? Icons.check_circle : Icons.inventory_2_outlined, size: 16, color: isAvailable ? Colors.green : Colors.red),
                             label: Text(status.name.toUpperCase()),
                             backgroundColor: isAvailable ? Colors.green.shade50 : Colors.red.shade50,
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      Builder(
+                        builder: (context) {
+                          final returnInfo = SchemaReturnPolicyChecker.checkReturnPolicy(product.resolvedSchema);
+                          return Chip(
+                            avatar: Icon(returnInfo.isReturnable ? Icons.replay : Icons.assignment_return, size: 16, color: returnInfo.isReturnable ? Colors.blue : Colors.grey),
+                            label: Text(returnInfo.categoryName),
+                            backgroundColor: Colors.blue.shade50,
                           );
                         },
                       ),
