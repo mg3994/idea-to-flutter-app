@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../auth_service.dart';
 import '../../cart_wishlist/data/app_database.dart';
+import '../../checkout/domain/order_status_tracker.dart';
 
 class ProfileScreen extends StatefulWidget {
   final AuthService authService;
@@ -136,6 +137,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text('Status: ${order.status}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                        const SizedBox(height: 8),
+                                        const Text('Order Progress Timeline:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                        const SizedBox(height: 4),
+                                        ...OrderStatusTracker.getMilestones(order.status).map((m) {
+                                          return Padding(
+                                            padding: const EdgeInsets.symmetric(vertical: 2.0),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  m.isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+                                                  size: 16,
+                                                  color: m.isCompleted ? Colors.green : Colors.grey,
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  m.title,
+                                                  style: TextStyle(
+                                                    fontWeight: m.isCurrent ? FontWeight.bold : FontWeight.normal,
+                                                    color: m.isCompleted ? Colors.black87 : Colors.grey,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        }),
+                                        const SizedBox(height: 8),
                                         Text('Total Amount: \$${order.totalAmount.toStringAsFixed(2)}'),
                                         Text('Payment Method: ${order.paymentMethod.toUpperCase()}'),
                                         Text('Date: ${order.createdAt.toIso8601String().split('T').first}'),
