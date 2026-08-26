@@ -14,6 +14,7 @@ import '../../../core/utils/schema_seller_checker.dart';
 import '../../../core/utils/schema_warranty_checker.dart';
 import '../../../core/utils/schema_brand_checker.dart';
 import '../../../core/utils/schema_organization_inspector.dart';
+import '../../../core/utils/schema_aggregate_offer_checker.dart';
 import '../../../core/utils/schema_condition_checker.dart';
 import '../../../core/utils/schema_faq_extractor.dart';
 import '../../../core/utils/schema_breadcrumb_utility.dart';
@@ -353,6 +354,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             avatar: const Icon(Icons.business, size: 16, color: Colors.blueGrey),
                             label: Text('Merchant: ${orgInfo.legalName}'),
                             backgroundColor: Colors.blueGrey.shade50,
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      Builder(
+                        builder: (context) {
+                          final aggInfo = SchemaAggregateOfferChecker.checkAggregateOffer(product.resolvedSchema);
+                          if (!aggInfo.isAggregate) return const SizedBox.shrink();
+                          return Chip(
+                            avatar: const Icon(Icons.sell, size: 16, color: Colors.brown),
+                            label: Text('${aggInfo.offerCount} Offers from \$${aggInfo.lowPrice.toStringAsFixed(2)} - \$${aggInfo.highPrice.toStringAsFixed(2)}'),
+                            backgroundColor: Colors.brown.shade50,
                           );
                         },
                       ),
