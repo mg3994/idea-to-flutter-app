@@ -11,6 +11,7 @@ import '../../../core/utils/schema_instock_checker.dart';
 import '../../../core/utils/schema_return_policy_checker.dart';
 import '../../../core/utils/schema_shipping_details_checker.dart';
 import '../../../core/utils/schema_seller_checker.dart';
+import '../../../core/utils/schema_warranty_checker.dart';
 import '../../../core/utils/schema_breadcrumb_utility.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -241,6 +242,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             avatar: const Icon(Icons.storefront, size: 16, color: Colors.indigo),
                             label: Text('Seller: ${sellerInfo.sellerName}'),
                             backgroundColor: Colors.indigo.shade50,
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      Builder(
+                        builder: (context) {
+                          final warrantyInfo = SchemaWarrantyChecker.checkWarranty(product.resolvedSchema);
+                          return Chip(
+                            avatar: const Icon(Icons.verified_user, size: 16, color: Colors.amber),
+                            label: Text(warrantyInfo.warrantyText),
+                            backgroundColor: Colors.amber.shade50,
                           );
                         },
                       ),
