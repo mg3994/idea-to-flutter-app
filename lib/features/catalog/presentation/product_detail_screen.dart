@@ -11,12 +11,14 @@ import '../../../core/utils/schema_breadcrumb_utility.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final ProductEntity product;
+  final List<ProductEntity> siblingVariants;
   final Function(ProductEntity) onAddToCart;
   final Function(ProductEntity) onToggleWishlist;
 
   const ProductDetailScreen({
     super.key,
     required this.product,
+    this.siblingVariants = const [],
     required this.onAddToCart,
     required this.onToggleWishlist,
   });
@@ -27,10 +29,17 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   bool _showRawSchema = false;
+  late ProductEntity _activeProduct;
+
+  @override
+  void initState() {
+    super.initState();
+    _activeProduct = widget.product;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final product = widget.product;
+    final product = _activeProduct;
     final formattedDate = SchemaI18nResolver.formatLocalTimestamp(product.publishedAt);
 
     return Scaffold(
@@ -184,6 +193,31 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       avatar: const Icon(Icons.branding_watermark, size: 16),
                       label: Text('Brand: ${product.brand}'),
                     ),
+                  if (widget.siblingVariants.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    const Text('Available Variants:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 4),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: widget.siblingVariants.map((variant) {
+                          final isSelected = variant.id == product.id;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 6.0),
+                            child: ChoiceChip(
+                              label: Text(variant.title),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  setState(() => _activeProduct = variant);
+                                }
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
                   if (product.ratingValue != null) ...[
                     const SizedBox(height: 8),
                     Row(

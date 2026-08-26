@@ -622,11 +622,20 @@ class CatalogScreen extends StatelessWidget {
                                                 onAddToCart: () => onAddToCart(product),
                                                 onToggleWishlist: () => onToggleWishlist(product),
                                                 onTap: () {
+                                              final baseAnchor = product.rawSchema['@base'] as String?;
+                                              final siblings = products.where((p) {
+                                                final pBase = p.rawSchema['@base'] as String?;
+                                                return p.id == product.id ||
+                                                    (baseAnchor != null && pBase == baseAnchor) ||
+                                                    (pBase == '${product.blogId}/${product.id}');
+                                              }).toList();
+
                                                   Navigator.push(
                                                     context,
                                                     MaterialPageRoute(
                                                       builder: (context) => ProductDetailScreen(
                                                         product: product,
+                                                    siblingVariants: siblings,
                                                         onAddToCart: onAddToCart,
                                                         onToggleWishlist: onToggleWishlist,
                                                       ),
