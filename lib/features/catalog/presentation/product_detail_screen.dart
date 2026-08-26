@@ -5,6 +5,7 @@ import '../../../shared/i18n/schema_i18n_resolver.dart';
 import '../../../shared/i18n/currency_converter.dart';
 import '../domain/schema_share_utility.dart';
 import '../../../core/utils/schema_audit_utility.dart';
+import '../../../core/utils/schema_export_manager.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final ProductEntity product;
@@ -210,10 +211,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Resolved Schema Specs', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      TextButton.icon(
-                        icon: Icon(_showRawSchema ? Icons.code_off : Icons.code),
-                        label: Text(_showRawSchema ? 'Hide Raw JSON' : 'View Raw JSON'),
-                        onPressed: () => setState(() => _showRawSchema = !_showRawSchema),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.copy, size: 20),
+                            tooltip: 'Copy Microdata HTML',
+                            onPressed: () {
+                              final snippet = SchemaExportManager.generateHtmlMicrodataSnippet(product.resolvedSchema);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Copied HTML Microdata snippet for "${product.title}"')),
+                              );
+                            },
+                          ),
+                          TextButton.icon(
+                            icon: Icon(_showRawSchema ? Icons.code_off : Icons.code),
+                            label: Text(_showRawSchema ? 'Hide Raw JSON' : 'View Raw JSON'),
+                            onPressed: () => setState(() => _showRawSchema = !_showRawSchema),
+                          ),
+                        ],
                       ),
                     ],
                   ),
