@@ -10,6 +10,7 @@ import '../../../core/utils/schema_variant_matrix_utility.dart';
 import '../../../core/utils/schema_instock_checker.dart';
 import '../../../core/utils/schema_return_policy_checker.dart';
 import '../../../core/utils/schema_shipping_details_checker.dart';
+import '../../../core/utils/schema_seller_checker.dart';
 import '../../../core/utils/schema_breadcrumb_utility.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -229,6 +230,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             avatar: const Icon(Icons.local_shipping, size: 16, color: Colors.teal),
                             label: Text(shipInfo.deliveryWindowText),
                             backgroundColor: Colors.teal.shade50,
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      Builder(
+                        builder: (context) {
+                          final sellerInfo = SchemaSellerChecker.checkSeller(product.resolvedSchema);
+                          return Chip(
+                            avatar: const Icon(Icons.storefront, size: 16, color: Colors.indigo),
+                            label: Text('Seller: ${sellerInfo.sellerName}'),
+                            backgroundColor: Colors.indigo.shade50,
                           );
                         },
                       ),
