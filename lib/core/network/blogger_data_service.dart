@@ -21,12 +21,19 @@ class BloggerDataService {
     String? label,
     String? areaQuery,
     int maxResults = 20,
+    int startIndex = 1,
     String? pageToken,
   }) async {
     if (authToken != null || apiKey != null) {
       return _fetchPostsRestApi(blogId: blogId, label: label, maxResults: maxResults, pageToken: pageToken);
     } else {
-      return _fetchPostsFeeds(blogId: blogId, label: label, areaQuery: areaQuery, maxResults: maxResults);
+      return _fetchPostsFeeds(
+        blogId: blogId,
+        label: label,
+        areaQuery: areaQuery,
+        maxResults: maxResults,
+        startIndex: startIndex,
+      );
     }
   }
 
@@ -87,6 +94,7 @@ class BloggerDataService {
     String? label,
     String? areaQuery,
     int maxResults = 20,
+    int startIndex = 1,
   }) async {
     final String encCategory = label != null && label.isNotEmpty ? Uri.encodeComponent(label) : '';
     final String urlPath = encCategory.isNotEmpty
@@ -95,6 +103,7 @@ class BloggerDataService {
 
     final queryParams = <String, dynamic>{
       'alt': 'json',
+      'start-index': startIndex,
       'max-results': maxResults,
     };
 
