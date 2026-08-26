@@ -12,6 +12,7 @@ import '../../../core/utils/schema_return_policy_checker.dart';
 import '../../../core/utils/schema_shipping_details_checker.dart';
 import '../../../core/utils/schema_seller_checker.dart';
 import '../../../core/utils/schema_warranty_checker.dart';
+import '../../../core/utils/schema_faq_extractor.dart';
 import '../../../core/utils/schema_breadcrumb_utility.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -368,6 +369,32 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       );
                     }),
                   ],
+                  Builder(
+                    builder: (context) {
+                      final faqs = SchemaFaqExtractor.extractFaqs(product.resolvedSchema);
+                      if (faqs.isEmpty) return const SizedBox.shrink();
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 20),
+                          const Text('Frequently Asked Questions', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          const SizedBox(height: 8),
+                          ...faqs.map((faq) {
+                            return ExpansionTile(
+                              title: Text(faq.question, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(12.0),
+                                  child: Text(faq.answer, style: const TextStyle(color: Colors.black87)),
+                                ),
+                              ],
+                            );
+                          }),
+                        ],
+                      );
+                    },
+                  ),
                   const SizedBox(height: 20),
                   const Divider(),
                   Row(
