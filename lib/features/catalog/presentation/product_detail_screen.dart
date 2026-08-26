@@ -12,6 +12,7 @@ import '../../../core/utils/schema_return_policy_checker.dart';
 import '../../../core/utils/schema_shipping_details_checker.dart';
 import '../../../core/utils/schema_seller_checker.dart';
 import '../../../core/utils/schema_warranty_checker.dart';
+import '../../../core/utils/schema_brand_checker.dart';
 import '../../../core/utils/schema_faq_extractor.dart';
 import '../../../core/utils/schema_breadcrumb_utility.dart';
 
@@ -254,6 +255,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             avatar: const Icon(Icons.verified_user, size: 16, color: Colors.amber),
                             label: Text(warrantyInfo.warrantyText),
                             backgroundColor: Colors.amber.shade50,
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      Builder(
+                        builder: (context) {
+                          final brandInfo = SchemaBrandChecker.checkBrand(product.resolvedSchema);
+                          return Chip(
+                            avatar: const Icon(Icons.branding_watermark, size: 16, color: Colors.purple),
+                            label: Text('Brand: ${brandInfo.brandName}'),
+                            backgroundColor: Colors.purple.shade50,
                           );
                         },
                       ),
