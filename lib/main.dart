@@ -55,6 +55,7 @@ class _BlogStoreAppState extends State<BlogStoreApp> {
   final Signal<String> _searchQuerySignal = Signal('');
   final Signal<String> _userLocationCitySignal = Signal('');
   final Signal<SortOption> _sortOptionSignal = Signal(SortOption.featured);
+  final Signal<double?> _maxPriceSignal = Signal(null);
   final Signal<String> _selectedCurrencySignal = Signal('USD');
   final Signal<ThemeMode> _themeModeSignal = Signal(ThemeMode.light);
   final Signal<List<CartItem>> _cartItemsSignal = Signal([]);
@@ -162,6 +163,7 @@ class _BlogStoreAppState extends State<BlogStoreApp> {
                     userLocationCitySignal: _userLocationCitySignal,
                     sortOptionSignal: _sortOptionSignal,
                     selectedCurrencySignal: _selectedCurrencySignal,
+                    maxPriceSignal: _maxPriceSignal,
                     themeModeSignal: _themeModeSignal,
                     cartItemsSignal: _cartItemsSignal,
                     wishlistItemsSignal: _wishlistItemsSignal,
@@ -267,6 +269,7 @@ class CatalogScreen extends StatelessWidget {
   final Signal<String> userLocationCitySignal;
   final Signal<SortOption> sortOptionSignal;
   final Signal<String> selectedCurrencySignal;
+  final Signal<double?> maxPriceSignal;
   final Signal<ThemeMode> themeModeSignal;
   final Signal<List<CartItem>> cartItemsSignal;
   final Signal<List<WishlistItem>> wishlistItemsSignal;
@@ -283,6 +286,7 @@ class CatalogScreen extends StatelessWidget {
     required this.userLocationCitySignal,
     required this.sortOptionSignal,
     required this.selectedCurrencySignal,
+    required this.maxPriceSignal,
     required this.themeModeSignal,
     required this.cartItemsSignal,
     required this.wishlistItemsSignal,
@@ -310,7 +314,33 @@ class CatalogScreen extends StatelessWidget {
               title: const Text('Reset All Filters'),
               onPressed: () {
                 searchQuerySignal.value = '';
+                maxPriceSignal.value = null;
                 Navigator.pop(context);
+              },
+            ),
+            const Divider(),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Text('Filter by Max Price:', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            BlocSignalBuilder<double?>(
+              signal: maxPriceSignal,
+              builder: (context, maxPrice) {
+                return Column(
+                  children: [
+                    Slider(
+                      value: maxPrice ?? 1000.0,
+                      min: 50.0,
+                      max: 2000.0,
+                      divisions: 39,
+                      label: maxPrice != null ? '\$${maxPrice.toInt()}' : 'Any',
+                      onChanged: (val) {
+                        maxPriceSignal.value = val;
+                      },
+                    ),
+                    Text(maxPrice != null ? 'Max Price: \$${maxPrice.toInt()}' : 'Max Price: Unlimited'),
+                  ],
+                );
               },
             ),
             const Divider(),
@@ -534,26 +564,32 @@ class CatalogScreen extends StatelessWidget {
                             return BlocSignalBuilder<String>(
                               signal: userLocationCitySignal,
                               builder: (context, city) {
-                                final filtered = products.where((p) {
-                                  // 1. Label/Query match
-                                  bool matchesQuery = true;
-                                  if (query.isNotEmpty) {
-                                    if (query.contains('label:')) {
-                                      matchesQuery = LabelQueryParser.matches(p.labels, query);
-                                    } else {
-                                      matchesQuery = p.title.toLowerCase().contains(query.toLowerCase()) ||
-                                          (p.description?.toLowerCase().contains(query.toLowerCase()) ?? false);
-                                    }
-                                  }
+                                return BlocSignalBuilder<double?>(
+                                  signal: maxPriceSignal,
+                                  builder: (context, maxPrice) {
+                                    final filtered = products.where((p) {
+                                      // 1. Label/Query match
+                                      bool matchesQuery = true;
+                                      if (query.isNotEmpty) {
+                                        if (query.contains('label:')) {
+                                          matchesQuery = LabelQueryParser.matches(p.labels, query);
+                                        } else {
+                                          matchesQuery = p.title.toLowerCase().contains(query.toLowerCase()) ||
+                                              (p.description?.toLowerCase().contains(query.toLowerCase()) ?? false);
+                                        }
+                                      }
 
-                                  // 2. areaServed match
-                                  bool matchesArea = AreaServedMatcher.matches(
-                                    areaServed: p.areaServed,
-                                    city: city,
-                                  );
+                                      // 2. areaServed match
+                                      bool matchesArea = AreaServedMatcher.matches(
+                                        areaServed: p.areaServed,
+                                        city: city,
+                                      );
 
-                                  return matchesQuery && matchesArea;
-                                }).toList();
+                                      // 3. Price limit match
+                                      bool matchesPrice = maxPrice == null || p.price <= maxPrice;
+
+                                      return matchesQuery && matchesArea && matchesPrice;
+                                    }).toList();
 
                                 if (filtered.isEmpty) {
                                   return const Center(child: Text('No products found matching criteria.'));
@@ -603,6 +639,8 @@ class CatalogScreen extends StatelessWidget {
                                         );
                                       },
                                     );
+                                  },
+                                );
                                   },
                                 );
                               },
