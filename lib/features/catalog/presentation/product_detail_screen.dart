@@ -6,6 +6,7 @@ import '../../../shared/i18n/currency_converter.dart';
 import '../domain/schema_share_utility.dart';
 import '../../../core/utils/schema_audit_utility.dart';
 import '../../../core/utils/schema_export_manager.dart';
+import '../../../core/utils/schema_variant_matrix_utility.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final ProductEntity product;
@@ -173,6 +174,44 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           Text('(${product.reviewCount} reviews)', style: const TextStyle(color: Colors.grey)),
                         ],
                       ],
+                    ),
+                  ],
+                  if (product.rawSchema.containsKey('@base')) ...[
+                    const SizedBox(height: 8),
+                    Builder(
+                      builder: (context) {
+                        final delta = SchemaVariantMatrixUtility.extractDelta(
+                          masterSchema: product.resolvedSchema,
+                          variantSchema: product.rawSchema,
+                        );
+                        if (delta.isEmpty) return const SizedBox.shrink();
+
+                        return Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.deepPurple.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.deepPurple.shade200),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.alt_route, size: 18, color: Colors.deepPurple),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Variant Overrides (Base: ${product.rawSchema["@base"]})',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.deepPurple),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              ...delta.entries.map((e) => Text('• ${e.key}: ${e.value}', style: const TextStyle(fontSize: 12))),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ],
                   if (product.sku != null)
