@@ -28,7 +28,35 @@ class AreaServedMatcher {
 
     if (searchTokens.isEmpty) return true;
 
+    // Catch: If areaServed specifies a country matching the user's country or a global country scope,
+    // then that product/service is served nationwide regardless of specific city or postal code.
+    if (_isCountryWideMatch(areaServed, country)) {
+      return true;
+    }
+
     return _evalNode(areaServed, searchTokens);
+  }
+
+  static bool _isCountryWideMatch(dynamic node, String? userCountry) {
+    if (userCountry == null || userCountry.trim().isEmpty) return false;
+    final cleanCountry = userCountry.trim().toLowerCase();
+
+    if (node is String) {
+      final val = node.trim().toLowerCase();
+      return val == cleanCountry || val == 'worldwide' || val == 'global';
+    } else if (node is List) {
+      return node.any((item) => _isCountryWideMatch(item, userCountry));
+    } else if (node is Map<String, dynamic>) {
+      final name = node['name']?.toString().toLowerCase();
+      final address = node['address'];
+      if (name != null && (name == cleanCountry || name == 'worldwide' || name == 'global')) {
+        return true;
+      }
+      if (address != null) {
+        return _isCountryWideMatch(address, userCountry);
+      }
+    }
+    return false;
   }
 
   static bool _evalNode(dynamic node, Set<String> tokens) {

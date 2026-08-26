@@ -19,13 +19,14 @@ class BloggerDataService {
   Future<List<Map<String, dynamic>>> fetchPosts({
     String blogId = EnvConfig.defaultBlogId,
     String? label,
+    String? areaQuery,
     int maxResults = 20,
     String? pageToken,
   }) async {
     if (authToken != null || apiKey != null) {
       return _fetchPostsRestApi(blogId: blogId, label: label, maxResults: maxResults, pageToken: pageToken);
     } else {
-      return _fetchPostsFeeds(blogId: blogId, label: label, maxResults: maxResults);
+      return _fetchPostsFeeds(blogId: blogId, label: label, areaQuery: areaQuery, maxResults: maxResults);
     }
   }
 
@@ -84,18 +85,27 @@ class BloggerDataService {
   Future<List<Map<String, dynamic>>> _fetchPostsFeeds({
     required String blogId,
     String? label,
+    String? areaQuery,
     int maxResults = 20,
   }) async {
-    final String urlPath = label != null && label.isNotEmpty
-        ? '${EnvConfig.bloggerFeedBaseUrl}/$blogId/posts/default/-/$label'
+    final String encCategory = label != null && label.isNotEmpty ? Uri.encodeComponent(label) : '';
+    final String urlPath = encCategory.isNotEmpty
+        ? '${EnvConfig.bloggerFeedBaseUrl}/$blogId/posts/default/-/$encCategory'
         : '${EnvConfig.bloggerFeedBaseUrl}/$blogId/posts/default';
+
+    final queryParams = <String, dynamic>{
+      'alt': 'json',
+      'max-results': maxResults,
+    };
+
+    if (areaQuery != null && areaQuery.trim().isNotEmpty) {
+      final encArea = Uri.encodeComponent(areaQuery.trim());
+      queryParams['q'] = '"$encArea"';
+    }
 
     final response = await dio.get(
       urlPath,
-      queryParameters: {
-        'alt': 'json',
-        'max-results': maxResults,
-      },
+      queryParameters: queryParams,
     );
 
     final List<Map<String, dynamic>> results = [];
