@@ -7,6 +7,7 @@ import '../domain/schema_share_utility.dart';
 import '../../../core/utils/schema_audit_utility.dart';
 import '../../../core/utils/schema_export_manager.dart';
 import '../../../core/utils/schema_variant_matrix_utility.dart';
+import '../../../core/utils/schema_breadcrumb_utility.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final ProductEntity product;
@@ -72,6 +73,30 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Builder(
+                    builder: (context) {
+                      final breadcrumbs = SchemaBreadcrumbUtility.extractBreadcrumbs(product.resolvedSchema);
+                      if (breadcrumbs.isEmpty) return const SizedBox.shrink();
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12.0),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: breadcrumbs.map((b) {
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 4.0),
+                                child: Chip(
+                                  avatar: const Icon(Icons.navigate_next, size: 14),
+                                  label: Text(b.name, style: const TextStyle(fontSize: 11)),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                   const Divider(),
                   Builder(
                     builder: (context) {
