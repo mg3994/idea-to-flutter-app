@@ -7,6 +7,7 @@ import '../domain/schema_share_utility.dart';
 import '../../../core/utils/schema_audit_utility.dart';
 import '../../../core/utils/schema_export_manager.dart';
 import '../../../core/utils/schema_variant_matrix_utility.dart';
+import '../../../core/utils/schema_instock_checker.dart';
 import '../../../core/utils/schema_breadcrumb_utility.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -188,11 +189,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  if (product.brand != null)
-                    Chip(
-                      avatar: const Icon(Icons.branding_watermark, size: 16),
-                      label: Text('Brand: ${product.brand}'),
-                    ),
+                  Row(
+                    children: [
+                      if (product.brand != null)
+                        Chip(
+                          avatar: const Icon(Icons.branding_watermark, size: 16),
+                          label: Text('Brand: ${product.brand}'),
+                        ),
+                      const SizedBox(width: 8),
+                      Builder(
+                        builder: (context) {
+                          final status = SchemaInStockChecker.checkAvailability(product.resolvedSchema);
+                          final isAvailable = status == StockStatus.inStock;
+                          return Chip(
+                            avatar: Icon(isAvailable ? Icons.check_circle : Icons.inventory_2_outlined, size: 16, color: isAvailable ? Colors.green : Colors.red),
+                            label: Text(status.name.toUpperCase()),
+                            backgroundColor: isAvailable ? Colors.green.shade50 : Colors.red.shade50,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                   if (widget.siblingVariants.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     const Text('Available Variants:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
